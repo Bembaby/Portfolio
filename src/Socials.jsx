@@ -1,45 +1,47 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import char1 from "./assets/char1.png";
 import char2 from "./assets/char2.png";
 import char3 from "./assets/char3.png";
-import bgVideo from "./assets/main3.mp4";
-import newsign from "./assets/newsign.png";
 import icon1 from "./assets/icon1.png";
 import icon2 from "./assets/icon2.png";
 import icon3 from "./assets/icon3.png";
+import SeaOfSouls from "./SeaOfSouls";
+import { playHover, playConfirm, playBack, playRankUp } from "./sfx";
+import { PROFILE } from "./content";
 
 const CHARS = [char1, char2, char3];
 
 const ROLES = [
-  { text: "LEADER", color: "#e8c100", bg: "rgba(232,193,0,0.12)", border: "rgba(232,193,0,0.5)" },
-  { text: "PARTY",  color: "#4a8fff", bg: "rgba(74,143,255,0.12)", border: "rgba(74,143,255,0.5)" },
-  { text: "PARTY",  color: "#4a8fff", bg: "rgba(74,143,255,0.12)", border: "rgba(74,143,255,0.5)" },
+  { text: "CODE", color: "#e8c100", bg: "rgba(232,193,0,0.12)", border: "rgba(232,193,0,0.5)" },
+  { text: "LIFE", color: "#4a8fff", bg: "rgba(74,143,255,0.12)", border: "rgba(74,143,255,0.5)" },
+  { text: "MAIL", color: "#4a8fff", bg: "rgba(74,143,255,0.12)", border: "rgba(74,143,255,0.5)" },
 ];
 
 const ITEMS = [
   {
-    id: "twitch", label: "TWITCH", handle: "@yourname", href: "https://twitch.tv/yourname", icon: "🎮", barIcon: icon1, bars: 1, newBars: [0], counts: ["56"],
-    links: ["twitch.tv/videos/2041837265"],
+    id: "github", label: "GITHUB", handle: PROFILE.github.handle, href: PROFILE.github.url,
+    icon: "</>", barIcon: icon1, bars: 1, newBars: [], counts: ["►"], boxLabel: "OPEN",
+    links: [`github.com/${PROFILE.github.handle}`],
     stats: [
-      { tag: "FOL", value: "1.2K", color: "#9147ff" },
-      { tag: "VWR", value: "042",  color: "#bf94ff" },
+      { tag: "USR", value: "BEMBABY", color: "#a78bfa" },
     ],
   },
   {
-    id: "instagram", label: "INSTAGRAM", handle: "@yourhandle", href: "https://instagram.com/yourhandle", icon: "📷", barIcon: icon2, bars: 5, newBars: [1, 2], counts: ["3.4M", "2.5M", "676K", "412K", "198K"],
-    links: ["instagram.com/p/C4xQmRrNk2a", "instagram.com/p/C3wLpBsOj7f", "instagram.com/reel/C2vKoArMi6e", "instagram.com/p/C1uJnZqLh5d", "instagram.com/reel/C0tImYpKg4c"],
+    id: "instagram", label: "INSTAGRAM", handle: PROFILE.instagram.handle, href: PROFILE.instagram.url,
+    icon: "◆", barIcon: icon2, bars: 1, newBars: [], counts: ["►"], boxLabel: "OPEN",
+    links: [`instagram.com/${PROFILE.instagram.handle.replace("@", "")}`],
     stats: [
-      { tag: "FOL", value: "3.4K", color: "#e1306c" },
-      { tag: "PST", value: "128",  color: "#f77737" },
+      { tag: "IG", value: "@BELALWHO", color: "#e1306c" },
     ],
   },
   {
-    id: "tiktok", label: "TIKTOK", handle: "@yourhandle", href: "https://tiktok.com/@yourhandle", icon: "🎵", barIcon: icon3, bars: 7, newBars: [0, 3, 5, 6], counts: ["5.1M", "3.7M", "2.2M", "1.4M", "831K", "490K", "217K"],
-    links: ["tiktok.com/@yourhandle/video/7318492016374859054", "tiktok.com/@yourhandle/video/7305837261940183342", "tiktok.com/@yourhandle/video/7291046385720348974", "tiktok.com/@yourhandle/video/7278392047163820334", "tiktok.com/@yourhandle/video/7264819203847165742", "tiktok.com/@yourhandle/video/7251047382916430126", "tiktok.com/@yourhandle/video/7237294018463851822"],
+    id: "email", label: "EMAIL", handle: PROFILE.email, href: `mailto:${PROFILE.email}`,
+    icon: "@", barIcon: icon3, bars: 2, newBars: [], counts: ["►", "⧉"],
+    boxLabels: ["WRITE", "COPY"],
+    links: [PROFILE.email, PROFILE.email],
     stats: [
-      { tag: "FOL", value: "8.9K", color: "#00f2ea" },
-      { tag: "LKS", value: "52K",  color: "#ff0050" },
+      { tag: "TO", value: "BELAL919", color: "#00f2ea" },
     ],
   },
 ];
@@ -49,7 +51,34 @@ export default function Socials() {
   const [mounted, setMounted]             = useState(false);
   const [activeInfoBar, setActiveInfoBar] = useState(0);
   const [focus, setFocus]                 = useState("left"); // "left" | "right"
+  const [toast, setToast]                 = useState(null);
+  const toastTimer = useRef(null);
   const navigate = useNavigate();
+
+  const showToast = useCallback((text) => {
+    clearTimeout(toastTimer.current);
+    setToast(text);
+    toastTimer.current = setTimeout(() => setToast(null), 1700);
+  }, []);
+
+  const copyEmail = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(PROFILE.email);
+      playRankUp();
+      showToast("EMAIL COPIED");
+    } catch {
+      showToast(PROFILE.email);
+    }
+  }, [showToast]);
+
+  // The email item's second info bar copies instead of opening mailto.
+  const fireInfoBar = useCallback((item, barIdx) => {
+    if (item.id === "email" && barIdx === 1) { copyEmail(); return; }
+    playConfirm();
+    window.open(item.href, "_blank");
+  }, [copyEmail]);
+
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
 
   useEffect(() => {
     const t = setTimeout(() => setMounted(true), 60);
@@ -59,26 +88,26 @@ export default function Socials() {
   useEffect(() => {
     const onKey = (e) => {
       if (focus === "left") {
-        if (e.key === "ArrowUp")    setActive(i => Math.max(0, i - 1));
-        if (e.key === "ArrowDown")  setActive(i => Math.min(ITEMS.length - 1, i + 1));
-        if (e.key === "ArrowRight") { setFocus("right"); setActiveInfoBar(0); }
-        if (e.key === "Enter")      window.open(ITEMS[active].href, "_blank");
+        if (e.key === "ArrowUp")    setActive(i => { if (i > 0) playHover(); return Math.max(0, i - 1); });
+        if (e.key === "ArrowDown")  setActive(i => { if (i < ITEMS.length - 1) playHover(); return Math.min(ITEMS.length - 1, i + 1); });
+        if (e.key === "ArrowRight") { playHover(); setFocus("right"); setActiveInfoBar(0); }
+        if (e.key === "Enter")      { playConfirm(); window.open(ITEMS[active].href, "_blank"); }
       } else {
         const barCount = ITEMS[active].bars;
-        if (e.key === "ArrowUp")   setActiveInfoBar(i => Math.max(0, i - 1));
-        if (e.key === "ArrowDown") setActiveInfoBar(i => Math.min(barCount - 1, i + 1));
-        if (e.key === "ArrowLeft") setFocus("left");
-        if (e.key === "Enter")     window.open("https://" + ITEMS[active].links[activeInfoBar], "_blank");
+        if (e.key === "ArrowUp")   setActiveInfoBar(i => { if (i > 0) playHover(); return Math.max(0, i - 1); });
+        if (e.key === "ArrowDown") setActiveInfoBar(i => { if (i < barCount - 1) playHover(); return Math.min(barCount - 1, i + 1); });
+        if (e.key === "ArrowLeft") { playBack(); setFocus("left"); }
+        if (e.key === "Enter")     fireInfoBar(ITEMS[active], activeInfoBar);
       }
-      if ((e.key === "ArrowLeft" && focus === "left") || e.key === "Escape" || e.key === "Backspace") navigate(-1);
+      if ((e.key === "ArrowLeft" && focus === "left") || e.key === "Escape" || e.key === "Backspace") { playBack(); navigate(-1); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [active, navigate, focus]);
+  }, [active, navigate, focus, activeInfoBar, fireInfoBar]);
 
   return (
     <div id="menu-screen">
-      <video src={bgVideo} autoPlay loop muted playsInline />
+      <SeaOfSouls theme="socials" />
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:ital,wght@0,400;0,700;1,700&display=swap');
 
@@ -381,7 +410,9 @@ export default function Socials() {
           letter-spacing: 3px;
           line-height: 1;
           user-select: none;
-          color: #111;
+          color: #ffffff;
+          -webkit-text-stroke: 1px rgba(0,0,0,0.6);
+          paint-order: stroke fill;
           padding: 0 8px;
         }
         .sc-right-nav .sc-nav-arrow {
@@ -404,6 +435,7 @@ export default function Socials() {
           position: fixed;
           right: 0;
           left: 65%;
+          top: calc(155px + var(--bar-i, 0) * 52px);
           height: 46px;
           background: transparent;
           pointer-events: all;
@@ -452,10 +484,12 @@ export default function Socials() {
           font-family: 'Bebas Neue', sans-serif;
           font-size: 22px;
           letter-spacing: 2px;
-          color: #111;
+          color: rgba(255,255,255,0.85);
           padding: 0 14px;
           user-select: none;
+          transition: color 0.15s ease;
         }
+        .sc-info-bar-wrap.selected .sc-info-bar-text { color: #111; }
         .sc-info-bar-box {
           height: 70%;
           background: #000;
@@ -486,11 +520,13 @@ export default function Socials() {
           font-family: 'Bebas Neue', sans-serif;
           font-size: 22px;
           letter-spacing: 1px;
-          color: #111;
+          color: rgba(255,255,255,0.85);
           margin-right: 80px;
           flex-shrink: 0;
           user-select: none;
+          transition: color 0.15s ease;
         }
+        .sc-info-bar-wrap.selected .sc-info-bar-count { color: #111; }
 
         /* footer hints */
         .sc-footer {
@@ -514,6 +550,63 @@ export default function Socials() {
           border-radius: 3px;
           padding: 1px 6px; font-size: 11px;
         }
+        @media (pointer: coarse) { .sc-footer { display: none; } }
+
+        /* copy toast */
+        @keyframes sc-toast-in {
+          0%   { opacity: 0; transform: skewX(-10deg) translateY(26px) scale(0.9); }
+          55%  { opacity: 1; transform: skewX(-10deg) translateY(-4px) scale(1.04); }
+          100% { opacity: 1; transform: skewX(-10deg) translateY(0) scale(1); }
+        }
+        .sc-toast {
+          position: fixed;
+          bottom: 86px;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 700;
+          pointer-events: none;
+        }
+        .sc-toast-inner {
+          font-family: 'Anton', sans-serif;
+          font-size: 28px;
+          letter-spacing: 2px;
+          color: #0a0a14;
+          background: #ffffff;
+          padding: 12px 34px 10px;
+          clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+          box-shadow: 8px 8px 0 #c4001a;
+          animation: sc-toast-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+          white-space: nowrap;
+        }
+        .sc-toast-inner span { color: #c4001a; }
+
+        /* ── mobile / narrow ── */
+        @media (max-width: 980px) {
+          .sc-root { justify-content: flex-start; padding-top: 31vh; gap: 10px; }
+          .sc-info-bar-wrap { left: 6vw; right: 6vw; top: calc(92px + var(--bar-i, 0) * 50px); }
+          .sc-bar, .sc-bar-red { width: 88vw; }
+          .sc-bar { height: 58px; }
+          .sc-bar-outer.active .sc-bar,
+          .sc-bar-outer.active .sc-bar-red { height: 76px; }
+          .sc-role { font-size: 30px; padding: 0 8px 0 4px; }
+          .sc-label { font-size: 20px; letter-spacing: 2px; }
+          .sc-char { left: 64px; max-width: 100px; }
+          .sc-main { padding-left: 0; }
+          .sc-stats { padding-right: 8px; }
+          .sc-stat-num { font-size: 18px; }
+          .sc-bar-outer.active .sc-bar-fill {
+            clip-path: polygon(30% 0, 100% 0, calc(100% - 14px) 100%, calc(30% + 80px) 100%);
+          }
+          .sc-right-nav { top: 14px; right: 12px; gap: 3px; }
+          .sc-right-nav .sc-nav-btn { font-size: 44px; -webkit-text-stroke: 1px #000; }
+          .sc-right-nav .sc-nav-label { font-size: 18px; letter-spacing: 2px; }
+          .sc-info-bar-wrap { height: 42px; }
+          .sc-info-bar-text { font-size: 16px; letter-spacing: 1px; }
+          .sc-info-bar-count { margin-right: 14px; font-size: 18px; }
+          .sc-info-bar-box { font-size: 16px; padding: 0 10px; }
+          .sc-info-bar-icon { margin-left: 10px; }
+          .sc-toast-inner { font-size: 20px; padding: 10px 22px 8px; }
+        }
       `}</style>
 
       <div className="sc-root" role="navigation">
@@ -522,10 +615,10 @@ export default function Socials() {
             key={item.id}
             className={`sc-bar-outer${active === i ? " active" : ""}${mounted ? " mounted" : ""}`}
             onClick={() => {
-              if (active === i) window.open(item.href, "_blank");
+              if (active === i) { playConfirm(); window.open(item.href, "_blank"); }
               else setActive(i);
             }}
-            onMouseEnter={() => setActive(i)}
+            onMouseEnter={() => { if (active !== i) playHover(); setActive(i); }}
           >
             <div className="sc-bar-red" />
             <div className="sc-bar">
@@ -574,21 +667,26 @@ export default function Socials() {
         <div
           className={`sc-info-bar-wrap${activeInfoBar === i ? " selected" : ""}`}
           key={`bar-${active}-${i}`}
-          style={{ top: `${155 + i * 52}px`, animationDelay: `${i * 50}ms` }}
-          onClick={() => setActiveInfoBar(i)}
-          onMouseEnter={() => setActiveInfoBar(i)}
+          style={{ "--bar-i": i, animationDelay: `${i * 50}ms` }}
+          onClick={() => fireInfoBar(ITEMS[active], i)}
+          onMouseEnter={() => { if (activeInfoBar !== i) playHover(); setActiveInfoBar(i); }}
         >
-          {ITEMS[active].newBars.includes(i) && (
-            <img className="sc-info-bar-new" src={newsign} alt="" />
-          )}
           <div className="sc-info-bar">
             <img className="sc-info-bar-icon" src={ITEMS[active].barIcon} alt="" />
-            <span className="sc-info-bar-text">{ITEMS[active].links[i].slice(0, 10)}...</span>
-            <span className="sc-info-bar-box">VIEWS</span>
+            <span className="sc-info-bar-text">{ITEMS[active].links[i]}</span>
+            <span className="sc-info-bar-box">{ITEMS[active].boxLabels?.[i] ?? ITEMS[active].boxLabel}</span>
             <span className="sc-info-bar-count">{ITEMS[active].counts[i]}</span>
           </div>
         </div>
       ))}
+
+      {toast && (
+        <div className="sc-toast" role="status">
+          <div className="sc-toast-inner">
+            {toast} <span>— GET!</span>
+          </div>
+        </div>
+      )}
 
       <div className={`sc-footer${mounted ? " mounted" : ""}`}>
         <div className="sc-footer-row"><span className="sc-footer-key">↑↓</span><span>SELECT</span></div>

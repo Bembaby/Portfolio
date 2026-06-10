@@ -1,74 +1,182 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import char1 from "./assets/char1.png";
 import char2 from "./assets/char2.png";
 import char3 from "./assets/char3.png";
-import bgVideo from "./assets/main1.mp4";
-import icon1 from "./assets/icon1.png";
-import icon2 from "./assets/icon2.png";
-import icon3 from "./assets/icon3.png";
 import mainm from "./assets/mainm.jpeg";
 import mainm2 from "./assets/mainm2.jpeg";
 import mainf from "./assets/mainf.jpeg";
+import SeaOfSouls from "./SeaOfSouls";
+import { playHover, playConfirm, playBack } from "./sfx";
+import { STATS } from "./content";
 
-const CHARS = [char1, char2, char3];
-const MAIN_IMAGES = [mainm, mainm2, mainf];
+const CHARS = [char1, char2, char3, null];
+const MAIN_IMAGES = [mainm, mainm2, mainf, null];
 
 const REVEAL_CONTENT = [
   {
-    upper: ["name moneybagg", "age:23"],
-    lower: "major: computer science",
+    upper: [
+      "Belal Embaby — Software Engineer",
+      "B.S. Computer Science @ NJIT, Class of Dec 2025",
+      "Currently engineering a real estate platform at RANCS Capital",
+    ],
+    lower: "newark, new jersey",
   },
   {
     upper: [
-      "Cleopatra lived closer to the Moon landing than to the building of the pyramids.",
-      "Vikings kept cats on ships for pest control (and vibes).",
-      "In medieval Europe, animals could be put on trial for crimes",
+      "I'm fluent in Arabic, English, and Spanish —",
+      "three human languages on top of Java, JavaScript,",
+      "C, Python, and PHP.",
     ],
-    lower: "abbove is some history fun fact",
+    lower: "eight languages total, technically",
   },
   {
     upper: [
-      "Oxford University founding is older than the Aztec Empire.",
-      "The shortest war in history lasted 38–45 minutes (Britain vs Zanzibar).",
-      "Humans have been writing for ~5,000 years",
+      "I built FitTrack+ solo: web, iOS, and Android.",
+      "2,000+ downloads and 200+ active users later,",
+      "it runs on one shared Spring Boot backend.",
     ],
-    lower: "yes it's a place holder",
+    lower: "shipping beats talking",
+  },
+  {
+    upper: [
+      "Attribute scan complete.",
+      "Backend, frontend, devops, shipping speed, learning rate —",
+      "evaluated the only honest way: a radar chart.",
+    ],
+    lower: "stats grow every quarter",
   },
 ];
 
 const ROLES = [
   { text: "LEADER", color: "#e8c100", bg: "rgba(232,193,0,0.12)", border: "rgba(232,193,0,0.5)" },
-  { text: "PARTY",  color: "#4a8fff", bg: "rgba(74,143,255,0.12)", border: "rgba(74,143,255,0.5)" },
-  { text: "PARTY",  color: "#4a8fff", bg: "rgba(74,143,255,0.12)", border: "rgba(74,143,255,0.5)" },
+  { text: "HUMAN",  color: "#4a8fff", bg: "rgba(74,143,255,0.12)", border: "rgba(74,143,255,0.5)" },
+  { text: "MAKER",  color: "#4a8fff", bg: "rgba(74,143,255,0.12)", border: "rgba(74,143,255,0.5)" },
+  { text: "POWER",  color: "#ff5e88", bg: "rgba(255,94,136,0.12)", border: "rgba(255,94,136,0.5)" },
 ];
 
 const ITEMS = [
-  {
-    id: "twitch", label: "ABOUT ME", handle: "@yourname", href: "https://twitch.tv/yourname", icon: "🎮", barIcon: icon1, bars: 1, newBars: [0], counts: ["56"],
-    links: ["twitch.tv/videos/2041837265"],
-    stats: [
-      { tag: "FOL", value: "1.2K", color: "#9147ff" },
-      { tag: "VWR", value: "042",  color: "#bf94ff" },
-    ],
-  },
-  {
-    id: "instagram", label: "FUN FACT ABOUT ME", handle: "@yourhandle", href: "https://instagram.com/yourhandle", icon: "📷", barIcon: icon2, bars: 5, newBars: [1, 2], counts: ["3.4M", "2.5M", "676K", "412K", "198K"],
-    links: ["instagram.com/p/C4xQmRrNk2a", "instagram.com/p/C3wLpBsOj7f", "instagram.com/reel/C2vKoArMi6e", "instagram.com/p/C1uJnZqLh5d", "instagram.com/reel/C0tImYpKg4c"],
-    stats: [
-      { tag: "FOL", value: "3.4K", color: "#e1306c" },
-      { tag: "PST", value: "128",  color: "#f77737" },
-    ],
-  },
-  {
-    id: "tiktok", label: "WIRED FACT ABOUT ME", handle: "@yourhandle", href: "https://tiktok.com/@yourhandle", icon: "🎵", barIcon: icon3, bars: 7, newBars: [0, 3, 5, 6], counts: ["5.1M", "3.7M", "2.2M", "1.4M", "831K", "490K", "217K"],
-    links: ["tiktok.com/@yourhandle/video/7318492016374859054", "tiktok.com/@yourhandle/video/7305837261940183342", "tiktok.com/@yourhandle/video/7291046385720348974", "tiktok.com/@yourhandle/video/7278392047163820334", "tiktok.com/@yourhandle/video/7264819203847165742", "tiktok.com/@yourhandle/video/7251047382916430126", "tiktok.com/@yourhandle/video/7237294018463851822"],
-    stats: [
-      { tag: "FOL", value: "8.9K", color: "#00f2ea" },
-      { tag: "LKS", value: "52K",  color: "#ff0050" },
-    ],
-  },
+  { id: "whoami", label: "WHO I AM" },
+  { id: "funfact", label: "FUN FACT" },
+  { id: "shipped", label: "WHAT I'VE SHIPPED" },
+  { id: "stats", label: "MY STATS" },
 ];
+
+// Persona-style animated attribute radar.
+function RadarChart() {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const canvas = ref.current;
+    const ctx = canvas.getContext("2d");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const size = canvas.clientWidth;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const cx = size / 2;
+    const cy = size / 2 + 6;
+    const R = size * 0.32;
+    const N = STATS.length;
+    const angle = (i) => -Math.PI / 2 + (i * 2 * Math.PI) / N;
+
+    let raf = 0;
+    const start = performance.now();
+    const DUR = 900;
+
+    function frame(now) {
+      const raw = reduceMotion ? 1 : Math.min(1, (now - start) / DUR);
+      // overshoot ease
+      const k = raw === 1 ? 1 : 1 - Math.pow(2, -10 * raw) * Math.cos(raw * 7);
+      ctx.clearRect(0, 0, size, size);
+
+      // rings
+      for (let r = 1; r <= 4; r++) {
+        ctx.beginPath();
+        for (let i = 0; i <= N; i++) {
+          const a = angle(i % N);
+          const rr = (R * r) / 4;
+          const x = cx + Math.cos(a) * rr;
+          const y = cy + Math.sin(a) * rr;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = r === 4 ? "rgba(125, 212, 252, 0.4)" : "rgba(125, 212, 252, 0.14)";
+        ctx.lineWidth = r === 4 ? 1.6 : 1;
+        ctx.stroke();
+      }
+
+      // axes
+      for (let i = 0; i < N; i++) {
+        const a = angle(i);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R);
+        ctx.strokeStyle = "rgba(125, 212, 252, 0.16)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      // data polygon
+      ctx.beginPath();
+      for (let i = 0; i <= N; i++) {
+        const idx = i % N;
+        const a = angle(idx);
+        const rr = R * (STATS[idx].value / 99) * k;
+        const x = cx + Math.cos(a) * rr;
+        const y = cy + Math.sin(a) * rr;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = "rgba(60, 226, 255, 0.22)";
+      ctx.fill();
+      ctx.strokeStyle = "#3ce2ff";
+      ctx.lineWidth = 2.2;
+      ctx.shadowColor = "rgba(60, 226, 255, 0.8)";
+      ctx.shadowBlur = 12;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // vertex dots + labels
+      for (let i = 0; i < N; i++) {
+        const a = angle(i);
+        const rr = R * (STATS[i].value / 99) * k;
+        ctx.beginPath();
+        ctx.arc(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr, 3.4, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+
+        const lx = cx + Math.cos(a) * (R + 34);
+        const ly = cy + Math.sin(a) * (R + 30);
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#ff5e88";
+        ctx.font = `700 ${Math.round(size * 0.052)}px 'Anton', sans-serif`;
+        ctx.fillText(STATS[i].stat, lx, ly - 4);
+        ctx.fillStyle = "rgba(235, 248, 255, 0.85)";
+        ctx.font = `${Math.round(size * 0.034)}px 'Bebas Neue', sans-serif`;
+        ctx.fillText(STATS[i].label, lx, ly + Math.round(size * 0.04) - 2);
+        ctx.fillStyle = "#7dd4fc";
+        ctx.font = `${Math.round(size * 0.04)}px 'Bebas Neue', sans-serif`;
+        ctx.fillText(String(Math.round(STATS[i].value * k)), lx, ly + Math.round(size * 0.082));
+      }
+
+      if (raw < 1) raf = requestAnimationFrame(frame);
+    }
+
+    if (reduceMotion) {
+      // Draw the finished chart synchronously; no animation loop needed.
+      frame(start + DUR);
+    } else {
+      raf = requestAnimationFrame(frame);
+    }
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return <canvas ref={ref} className="sc-radar-canvas" aria-label="Skill radar chart" />;
+}
 
 export default function AboutMe() {
   const [active, setActive]   = useState(0);
@@ -83,15 +191,15 @@ export default function AboutMe() {
 
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === "ArrowUp") setActive(i => Math.max(0, i - 1));
-      if (e.key === "ArrowDown") setActive(i => Math.min(ITEMS.length - 1, i + 1));
-      if (e.key === "Enter") setRevealed(true);
-      if (e.key === "ArrowRight") setRevealed(true);
+      if (e.key === "ArrowUp") setActive(i => { if (i > 0) playHover(); return Math.max(0, i - 1); });
+      if (e.key === "ArrowDown") setActive(i => { if (i < ITEMS.length - 1) playHover(); return Math.min(ITEMS.length - 1, i + 1); });
+      if (e.key === "Enter" || e.key === "ArrowRight") { playConfirm(); setRevealed(true); }
       if (e.key === "ArrowLeft") {
+        playBack();
         if (revealed) setRevealed(false);
         else navigate(-1);
       }
-      if (e.key === "Escape" || e.key === "Backspace") navigate(-1);
+      if (e.key === "Escape" || e.key === "Backspace") { playBack(); navigate(-1); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -99,11 +207,21 @@ export default function AboutMe() {
 
   return (
     <div id="menu-screen">
-      <video src={bgVideo} autoPlay loop muted playsInline />
-      {revealed && <div key={`dim-${active}`} className="sc-dim" />}
+      <SeaOfSouls theme="about" />
       {revealed && (
-        <div key={`panel-${active}`} className={`sc-reveal-panel${mounted ? " mounted" : ""}`}>
-          <div className="sc-reveal-upper-bar">
+        <div
+          key={`dim-${active}`}
+          className="sc-dim"
+          style={{ pointerEvents: "all", cursor: "pointer" }}
+          onClick={() => { playBack(); setRevealed(false); }}
+        />
+      )}
+      {revealed && (
+        <div
+          key={`panel-${active}`}
+          className={`sc-reveal-panel${mounted ? " mounted" : ""}${ITEMS[active].id === "stats" ? " stats" : ""}`}
+        >
+          <div className={`sc-reveal-upper-bar${ITEMS[active].id === "stats" ? " stats" : ""}`}>
             {REVEAL_CONTENT[active].upper.map((line) => (
               <div className="sc-reveal-upper-line" key={line}>{line}</div>
             ))}
@@ -120,13 +238,19 @@ export default function AboutMe() {
           <span className="sc-nav-arrow right">►</span>
         </div>
       )}
-      {revealed && (
+      {revealed && MAIN_IMAGES[active] && (
         <div key={`portrait-${active}`} className={`sc-main-portrait-shell${mounted ? " mounted" : ""}`}>
           <img
             className="sc-main-portrait"
             src={MAIN_IMAGES[active]}
             alt=""
           />
+        </div>
+      )}
+      {revealed && ITEMS[active].id === "stats" && (
+        <div key={`radar-${active}`} className="sc-radar-shell">
+          <div className="sc-radar-title">ATTRIBUTES</div>
+          <RadarChart />
         </div>
       )}
       <style>{`
@@ -361,6 +485,47 @@ export default function AboutMe() {
           object-position: top right;
           transform: skewX(8deg) scale(1.08);
           transform-origin: top right;
+        }
+
+        /* radar chart shell (stats reveal) */
+        @keyframes sc-radar-in {
+          0%   { opacity: 0; transform: var(--radar-base, rotate(4deg)) translateX(70px) scale(0.92); }
+          60%  { opacity: 1; transform: var(--radar-base, rotate(4deg)) translateX(-8px) scale(1.01); }
+          100% { opacity: 1; transform: var(--radar-base, rotate(4deg)) translateX(0) scale(1); }
+        }
+        .sc-radar-shell {
+          --radar-base: rotate(4deg);
+          position: absolute;
+          top: 7vh;
+          right: 5vw;
+          z-index: 13;
+          width: min(40vw, 470px);
+          padding: 18px 18px 10px;
+          background: rgba(4, 7, 26, 0.94);
+          clip-path: polygon(0 0, 100% 0, calc(100% - 20px) 100%, 0 100%);
+          box-shadow:
+            inset 0 0 0 1px rgba(125, 212, 252, 0.25),
+            14px 14px 0 rgba(196, 0, 26, 0.85);
+          animation: sc-radar-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+          pointer-events: none;
+        }
+        /* keep the radar clear of the text bars */
+        .sc-reveal-upper-bar.stats {
+          padding-right: 40vw;
+        }
+        .sc-radar-title {
+          font-family: 'Anton', sans-serif;
+          font-size: 26px;
+          letter-spacing: 3px;
+          color: #ffffff;
+          border-left: 4px solid #ff5e88;
+          padding-left: 10px;
+          margin-bottom: 4px;
+        }
+        .sc-radar-canvas {
+          width: 100%;
+          aspect-ratio: 1;
+          display: block;
         }
 
         /* ── Each bar ── */
@@ -609,6 +774,47 @@ export default function AboutMe() {
           border-radius: 3px;
           padding: 1px 6px; font-size: 11px;
         }
+        @media (pointer: coarse) { .sc-footer { display: none; } }
+
+        /* ── mobile / narrow ── */
+        @media (max-width: 980px) {
+          .sc-bar, .sc-bar-red { width: 88vw; }
+          .sc-bar { height: 56px; }
+          .sc-bar-outer.active .sc-bar,
+          .sc-bar-outer.active .sc-bar-red { height: 72px; }
+          .sc-role { font-size: 26px; padding: 0 6px 0 2px; }
+          .sc-label { font-size: 18px; letter-spacing: 2px; }
+          .sc-char { left: 58px; max-width: 92px; }
+          .sc-main { padding-left: 0; }
+          .sc-bar-outer.active .sc-bar-fill {
+            clip-path: polygon(30% 0, 100% 0, calc(100% - 14px) 100%, calc(30% + 80px) 100%);
+          }
+          .sc-main-portrait-shell {
+            width: 74vw;
+            right: -8vw;
+            opacity: 0.5 !important;
+          }
+          .sc-reveal-panel {
+            top: 40vh;
+            height: 56vh;
+            width: 96vw;
+            left: -8vw;
+          }
+          .sc-reveal-upper-line { font-size: 13px; padding: 0 8vw; }
+          .sc-reveal-lower-bar { font-size: 14px; width: 62%; padding-left: 14px; }
+          /* gamepad hints are meaningless on touch and collide with the radar */
+          .sc-right-nav { display: none; }
+          .sc-radar-shell {
+            --radar-base: translateX(50%) rotate(0deg);
+            top: 9vh;
+            right: 50%;
+            width: min(62vw, 290px);
+            padding: 12px 12px 6px;
+          }
+          .sc-radar-title { font-size: 18px; }
+          .sc-reveal-panel.stats { top: 49vh; height: 48vh; }
+          .sc-reveal-upper-bar.stats { padding-right: 0; }
+        }
       `}</style>
 
       <div className="sc-root" role="navigation">
@@ -617,15 +823,18 @@ export default function AboutMe() {
             key={item.id}
             className={`sc-bar-outer${active === i ? " active" : ""}${mounted ? " mounted" : ""}`}
             onClick={() => {
+              playConfirm();
               setActive(i);
+              setRevealed(true);
             }}
             onMouseEnter={() => {
+              if (active !== i) playHover();
               setActive(i);
             }}
           >
             <div className="sc-bar-red" />
             <div className="sc-bar">
-              <img className="sc-char" src={CHARS[i]} alt="" />
+              {CHARS[i] && <img className="sc-char" src={CHARS[i]} alt="" />}
               <div className="sc-bar-fill" />
               <div className="sc-bar-shade" />
               <div className="sc-bar-content">

@@ -12,4 +12,37 @@ html, body, #root {
 body {
   background: #000;
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+::selection {
+  background: #c4001a;
+  color: #ffffff;
+}
+
+:focus-visible {
+  outline: 2px solid #7dd4fc;
+  outline-offset: 3px;
+}
+
+/* slim themed scrollbars for the scrollable mobile panels */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(125, 212, 252, 0.45) transparent;
+}
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: rgba(125, 212, 252, 0.45);
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

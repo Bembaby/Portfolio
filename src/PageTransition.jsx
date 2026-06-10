@@ -1,11 +1,12 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useState } from "react";
+import { motion as Motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "react-router-dom";
 
 const defaultBlocks = ["#0d1a3a", "#1a6aff", "#7dd4fc"];
 
 function DefaultTransition() {
   return defaultBlocks.map((color, i) => (
-    <motion.div
+    <Motion.div
       key={i}
       style={{
         position: "fixed",
@@ -34,7 +35,7 @@ function AboutTransition() {
   ];
 
   return panels.map((panel, i) => (
-    <motion.div
+    <Motion.div
       key={i}
       style={{
         position: "fixed",
@@ -69,7 +70,7 @@ function SocialsTransition() {
   ];
 
   return stripes.map((stripe, i) => (
-    <motion.div
+    <Motion.div
       key={i}
       style={{
         position: "fixed",
@@ -94,11 +95,90 @@ function SocialsTransition() {
   ));
 }
 
+function ProjectsTransition() {
+  const blades = [
+    { color: "#03100b", delay: 0 },
+    { color: "#0f7048", delay: 0.06 },
+    { color: "#5fe8a8", delay: 0.12 },
+  ];
+
+  return blades.map((blade, i) => (
+    <Motion.div
+      key={i}
+      style={{
+        position: "fixed",
+        inset: "-12vh -12vw",
+        background: blade.color,
+        zIndex: 999 - i,
+        clipPath: "polygon(0 0, 100% 0, 78% 100%, 0 100%)",
+      }}
+      initial={{ y: "-115%" }}
+      animate={{ y: ["-115%", "0%", "0%", "115%"] }}
+      transition={{
+        duration: 0.56,
+        delay: blade.delay,
+        times: [0, 0.42, 0.58, 1],
+        ease: [0.76, 0, 0.24, 1],
+      }}
+    />
+  ));
+}
+
+function NowLoading() {
+  return (
+    <Motion.div
+      style={{
+        position: "fixed",
+        bottom: 30,
+        right: 34,
+        zIndex: 1100,
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        pointerEvents: "none",
+      }}
+      initial={{ opacity: 0, x: 18 }}
+      animate={{ opacity: [0, 1, 1, 0], x: [18, 0, 0, -10] }}
+      transition={{ duration: 0.85, times: [0, 0.2, 0.75, 1] }}
+    >
+      <Motion.div
+        style={{
+          width: 14,
+          height: 14,
+          background: "#ffffff",
+          boxShadow: "0 0 12px rgba(125, 212, 252, 0.9)",
+        }}
+        animate={{ rotate: 360 }}
+        transition={{ duration: 0.7, repeat: Infinity, ease: "linear" }}
+      />
+      <span
+        style={{
+          fontFamily: "'Bebas Neue', sans-serif",
+          fontSize: 20,
+          letterSpacing: 5,
+          color: "#ffffff",
+          textShadow: "2px 2px 0 #c4001a",
+        }}
+      >
+        NOW LOADING
+      </span>
+    </Motion.div>
+  );
+}
+
 function TransitionOverlay({ variant }) {
-  if (variant === "about") return <AboutTransition />;
-  if (variant === "resume") return <ResumeTransition />;
-  if (variant === "socials") return <SocialsTransition />;
-  return <DefaultTransition />;
+  const overlay =
+    variant === "about" ? <AboutTransition /> :
+    variant === "resume" ? <ResumeTransition /> :
+    variant === "socials" ? <SocialsTransition /> :
+    variant === "projects" ? <ProjectsTransition /> :
+    <DefaultTransition />;
+  return (
+    <>
+      {overlay}
+      <NowLoading />
+    </>
+  );
 }
 
 function ResumeTransition() {
@@ -110,7 +190,7 @@ function ResumeTransition() {
   ];
 
   return cards.map((card, i) => (
-    <motion.div
+    <Motion.div
       key={i}
       style={{
         position: "fixed",
@@ -135,22 +215,36 @@ function ResumeTransition() {
   ));
 }
 
+// Mounts fresh on every navigation (keyed by pathname), shows the overlay,
+// then unmounts it once the longest variant (~0.8s incl. stagger) has run.
+function OverlayGate({ variant }) {
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDone(true), 1000);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (done) return null;
+  return <TransitionOverlay variant={variant} />;
+}
+
 export default function PageTransition({ children, variant = "default" }) {
   const location = useLocation();
 
   return (
     <AnimatePresence mode="wait">
-      <motion.div key={location.pathname} style={{ position: "relative" }}>
-        <TransitionOverlay variant={variant} />
-        <motion.div
+      <Motion.div key={location.pathname} style={{ position: "relative" }}>
+        <OverlayGate key={location.pathname} variant={variant} />
+        <Motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2, delay: 0.18 }}
         >
           {children}
-        </motion.div>
-      </motion.div>
+        </Motion.div>
+      </Motion.div>
     </AnimatePresence>
   );
 }
