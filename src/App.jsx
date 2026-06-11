@@ -12,8 +12,10 @@ import Intro from './Intro'
 import Hud from './Hud'
 import Cursor from './Cursor'
 import NotFound from './NotFound'
+import ProfessionalSite from './ProfessionalSite'
 import { PROFILE } from './content'
 import { toggleDarkHour, onDarkHourChange } from './darkHour'
+import { getSiteMode, onSiteModeChange } from './siteMode'
 import { playRankUp } from './sfx'
 import './App.css'
 
@@ -106,6 +108,7 @@ export default function App() {
     () => sessionStorage.getItem('p3-intro-seen') === '1'
   )
   const [darkFlash, setDarkFlash] = useState(false)
+  const [siteMode, setSiteModeState] = useState(getSiteMode())
 
   useKonami(() => {
     toggleDarkHour()
@@ -118,6 +121,12 @@ export default function App() {
     const t = setTimeout(() => setDarkFlash(false), 700)
     return () => clearTimeout(t)
   }), [])
+
+  useEffect(() => onSiteModeChange(setSiteModeState), [])
+
+  if (siteMode === 'pro') {
+    return <ProfessionalSite />
+  }
 
   return (
     <>

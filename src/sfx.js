@@ -140,22 +140,74 @@ export function setMuted(value) {
   applyBgmGain();
 }
 
-/* ── Ambient BGM ─────────────────────────────────────────────────
-   Synthesized slow pad loop (no audio files): two detuned saws and
-   a sub sine walking an Am–F–C–G progression through a breathing
-   lowpass filter. Quiet, moody, Velvet-Room-adjacent. */
+/* ── Battle BGM ──────────────────────────────────────────────────
+   Synthesized anime-battle track (no audio files): a 16-step sequencer
+   at 162 BPM arranged as a real song so it never wears you down:
+
+     VERSE (8 bars)  groovy syncopated beat, sparse low melody
+     BUILD (4 bars)  four-on-the-floor + rising arp + snare roll
+     CHORUS (8 bars) full battle energy with the written hook melody
+     BREAK (4 bars)  half-time, sustained pads, dreamy delayed lead
+
+   Progression: Am → F → G → E. Loop ≈ 36s with constant variation. */
 
 let bgmOn = false;
 let bgmNodes = null;
+let bgmStep = 0;
+let bgmNextAt = 0;
 
-const BGM_LEVEL = 0.05;
-const CHORDS = [
-  [57, 64, 72, 76], // Am: A3 E4 C5 E5
-  [53, 60, 69, 72], // F:  F3 C4 A4 C5
-  [48, 55, 64, 67], // C:  C3 G3 E4 G4
-  [55, 62, 71, 74], // G:  G3 D4 B4 D5
+const BGM_LEVEL = 0.35;
+const BPM = 162;
+const STEP = 60 / BPM / 4; // one 16th note
+
+// One chord per bar (16 steps). intervals = chord tones above root.
+const PROG = [
+  { root: 45, intervals: [0, 3, 7] },  // Am
+  { root: 41, intervals: [0, 4, 7] },  // F
+  { root: 43, intervals: [0, 4, 7] },  // G
+  { root: 40, intervals: [0, 4, 8] },  // E aug color for drama
 ];
-const CHORD_DUR = 4.2;
+
+// Song arrangement, in bars.
+const SECTIONS = [
+  { name: "verse",  bars: 8 },
+  { name: "build",  bars: 4 },
+  { name: "chorus", bars: 8 },
+  { name: "break",  bars: 4 },
+];
+const SONG_BARS = SECTIONS.reduce((n, s) => n + s.bars, 0);
+
+function sectionAt(songBar) {
+  let acc = 0;
+  for (const sec of SECTIONS) {
+    if (songBar < acc + sec.bars) return { section: sec.name, barIn: songBar - acc };
+    acc += sec.bars;
+  }
+  return { section: "verse", barIn: 0 };
+}
+
+// Melodies: 4-bar phrases, each bar a list of [step, midi, durSteps, vel].
+// The chorus hook — the bit that should stick in your head.
+const CHORUS_MEL = [
+  [[0, 81, 2, 0.1], [2, 84, 2, 0.09], [4, 83, 2, 0.09], [6, 79, 2, 0.08], [8, 81, 4, 0.1], [12, 76, 4, 0.08]],
+  [[0, 77, 2, 0.1], [2, 81, 2, 0.09], [4, 84, 3, 0.1], [8, 83, 2, 0.08], [10, 81, 2, 0.08], [12, 79, 4, 0.09]],
+  [[0, 79, 2, 0.1], [2, 83, 2, 0.09], [4, 86, 3, 0.1], [8, 84, 2, 0.09], [10, 83, 2, 0.08], [12, 81, 4, 0.09]],
+  [[0, 80, 2, 0.1], [2, 83, 2, 0.09], [4, 81, 2, 0.08], [6, 80, 2, 0.08], [8, 76, 7, 0.1]],
+];
+// Verse: lower, sparser, conversational.
+const VERSE_MEL = [
+  [[0, 69, 3, 0.06], [4, 72, 2, 0.055], [8, 71, 2, 0.05], [12, 67, 2, 0.05]],
+  [[0, 69, 2, 0.06], [4, 72, 4, 0.06], [10, 71, 2, 0.05], [12, 69, 2, 0.05]],
+  [[0, 71, 2, 0.06], [4, 74, 3, 0.06], [8, 72, 2, 0.05], [12, 71, 2, 0.05]],
+  [[0, 68, 4, 0.06], [8, 64, 6, 0.055]],
+];
+// Breakdown: long dreamy notes that ride the delay.
+const BREAK_MEL = [
+  [[0, 76, 8, 0.07], [8, 81, 8, 0.06]],
+  [[0, 77, 12, 0.07]],
+  [[0, 79, 8, 0.07], [8, 83, 8, 0.06]],
+  [[0, 80, 14, 0.07]],
+];
 
 const midiHz = (m) => 440 * Math.pow(2, (m - 69) / 12);
 
@@ -164,74 +216,261 @@ function applyBgmGain() {
   const c = ac();
   const target = bgmOn && !muted ? BGM_LEVEL : 0.0001;
   bgmNodes.master.gain.cancelScheduledValues(c.currentTime);
-  bgmNodes.master.gain.setTargetAtTime(target, c.currentTime, 0.8);
+  bgmNodes.master.gain.setTargetAtTime(target, c.currentTime, 0.2);
 }
 
 function buildBgm() {
   const c = ac();
   const master = c.createGain();
   master.gain.value = 0.0001;
-
-  const filter = c.createBiquadFilter();
-  filter.type = "lowpass";
-  filter.frequency.value = 760;
-  filter.Q.value = 0.6;
-
-  // Slow filter breathing.
-  const lfo = c.createOscillator();
-  const lfoGain = c.createGain();
-  lfo.frequency.value = 0.06;
-  lfoGain.gain.value = 320;
-  lfo.connect(lfoGain); lfoGain.connect(filter.frequency);
-  lfo.start();
-
-  filter.connect(master);
   master.connect(c.destination);
 
-  const voices = [];
-  for (let v = 0; v < 4; v++) {
+  // Light compression glues the mix and keeps peaks tame.
+  const bus = c.createDynamicsCompressor();
+  bus.threshold.value = -20;
+  bus.knee.value = 18;
+  bus.ratio.value = 7;
+  bus.attack.value = 0.004;
+  bus.release.value = 0.16;
+  bus.connect(master);
+
+  // Dotted-eighth feedback delay for the lead — instant anime energy.
+  const delay = c.createDelay(1);
+  delay.delayTime.value = STEP * 6;
+  const fb = c.createGain();
+  fb.gain.value = 0.34;
+  const wet = c.createGain();
+  wet.gain.value = 0.3;
+  delay.connect(fb); fb.connect(delay);
+  delay.connect(wet); wet.connect(bus);
+
+  return { master, bus, delay };
+}
+
+function hitKick(c, t) {
+  const o = c.createOscillator();
+  const g = c.createGain();
+  o.type = "sine";
+  o.frequency.setValueAtTime(150, t);
+  o.frequency.exponentialRampToValueAtTime(42, t + 0.1);
+  o.connect(g); g.connect(bgmNodes.bus);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.5, t + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+  o.start(t); o.stop(t + 0.18);
+}
+
+function hitSnare(c, t, vel = 0.26) {
+  const n = noise(c);
+  const nf = c.createBiquadFilter();
+  const g = c.createGain();
+  nf.type = "bandpass";
+  nf.frequency.value = 1900;
+  nf.Q.value = 0.8;
+  n.connect(nf); nf.connect(g); g.connect(bgmNodes.bus);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vel, t + 0.003);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+  n.start(t); n.stop(t + 0.16);
+  // body
+  const o = c.createOscillator();
+  const og = c.createGain();
+  o.type = "triangle";
+  o.frequency.setValueAtTime(210, t);
+  o.frequency.exponentialRampToValueAtTime(140, t + 0.06);
+  o.connect(og); og.connect(bgmNodes.bus);
+  og.gain.setValueAtTime(0.0001, t);
+  og.gain.exponentialRampToValueAtTime(vel * 0.6, t + 0.003);
+  og.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+  o.start(t); o.stop(t + 0.1);
+}
+
+function hitCrash(c, t) {
+  const n = noise(c);
+  const nf = c.createBiquadFilter();
+  const g = c.createGain();
+  nf.type = "highpass";
+  nf.frequency.value = 5600;
+  n.connect(nf); nf.connect(g); g.connect(bgmNodes.bus);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.11, t + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+  // noise buffer is 0.2s; loop it so the crash can ring out
+  n.loop = true;
+  n.start(t); n.stop(t + 0.72);
+}
+
+function hitHat(c, t, open, vel) {
+  const n = noise(c);
+  const nf = c.createBiquadFilter();
+  const g = c.createGain();
+  nf.type = "highpass";
+  nf.frequency.value = 8200;
+  n.connect(nf); nf.connect(g); g.connect(bgmNodes.bus);
+  const dur = open ? 0.12 : 0.035;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vel, t + 0.002);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  n.start(t); n.stop(t + dur + 0.02);
+}
+
+function playBassNote(c, t, midi, dur) {
+  const o = c.createOscillator();
+  const f = c.createBiquadFilter();
+  const g = c.createGain();
+  o.type = "sawtooth";
+  o.frequency.value = midiHz(midi);
+  f.type = "lowpass";
+  f.frequency.setValueAtTime(1500, t);
+  f.frequency.exponentialRampToValueAtTime(420, t + dur);
+  f.Q.value = 1.2;
+  o.connect(f); f.connect(g); g.connect(bgmNodes.bus);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.2, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+
+function playLeadNote(c, t, midi, vel, dur = 0.14) {
+  const g = c.createGain();
+  [-7, 7].forEach((cents) => {
+    const o = c.createOscillator();
+    o.type = "square";
+    o.frequency.value = midiHz(midi);
+    o.detune.value = cents;
+    o.connect(g);
+    o.start(t); o.stop(t + dur + 0.05);
+  });
+  const f = c.createBiquadFilter();
+  f.type = "lowpass";
+  f.frequency.value = 3600;
+  g.connect(f); f.connect(bgmNodes.bus); f.connect(bgmNodes.delay);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vel, t + 0.005);
+  g.gain.setValueAtTime(vel, t + Math.max(0.005, dur - 0.05));
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+}
+
+function playStab(c, t, chord) {
+  chord.intervals.forEach((iv) => {
+    const o = c.createOscillator();
     const g = c.createGain();
-    g.gain.value = 0.0001;
-    const o1 = c.createOscillator();
-    const o2 = c.createOscillator();
-    o1.type = "sawtooth";
-    o2.type = "sawtooth";
-    o1.detune.value = -6;
-    o2.detune.value = 6;
-    o1.connect(g); o2.connect(g);
-    g.connect(filter);
-    o1.start(); o2.start();
-    voices.push({ o1, o2, g });
+    o.type = "sawtooth";
+    o.frequency.value = midiHz(chord.root + 12 + iv);
+    o.connect(g); g.connect(bgmNodes.bus);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.05, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    o.start(t); o.stop(t + 0.24);
+  });
+}
+
+// Soft sustained chord for the breakdown.
+function playPad(c, t, chord, dur) {
+  chord.intervals.forEach((iv) => {
+    const g = c.createGain();
+    [-5, 5].forEach((cents) => {
+      const o = c.createOscillator();
+      o.type = "sawtooth";
+      o.frequency.value = midiHz(chord.root + 12 + iv);
+      o.detune.value = cents;
+      o.connect(g);
+      o.start(t); o.stop(t + dur + 0.1);
+    });
+    const f = c.createBiquadFilter();
+    f.type = "lowpass";
+    f.frequency.value = 1100;
+    g.connect(f); f.connect(bgmNodes.bus);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.022, t + 0.4);
+    g.gain.setValueAtTime(0.022, t + dur * 0.6);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  });
+}
+
+function scheduleStep(c, step, t) {
+  const songBar = Math.floor(step / 16) % SONG_BARS;
+  const s = step % 16;
+  const chord = PROG[songBar % PROG.length];
+  const { section, barIn } = sectionAt(songBar);
+
+  // Crash announces every new section.
+  if (s === 0 && barIn === 0) hitCrash(c, t);
+
+  /* drums */
+  if (section === "verse") {
+    // syncopated groove — energy without the relentless stomp
+    if (s === 0 || s === 7 || s === 10) hitKick(c, t);
+    if (s === 4 || s === 12) hitSnare(c, t, 0.22);
+    if (s % 2 === 0) hitHat(c, t, false, s % 4 === 0 ? 0.07 : 0.038);
+  } else if (section === "build") {
+    if (s % 4 === 0) hitKick(c, t);
+    if (s === 4 || s === 12) hitSnare(c, t, 0.22);
+    hitHat(c, t, false, s % 2 === 0 ? 0.07 : 0.04);
+    // snare roll through the final bar, growing into the chorus
+    if (barIn === 3 && s % 2 === 0) hitSnare(c, t, 0.08 + (s / 16) * 0.22);
+  } else if (section === "chorus") {
+    if (s % 4 === 0) hitKick(c, t);
+    if (s === 4 || s === 12) hitSnare(c, t);
+    if (s === 14 && barIn === 7) hitSnare(c, t + STEP / 2); // fill out
+    hitHat(c, t, s % 4 === 2, s % 2 === 0 ? 0.09 : 0.045);
+  } else {
+    // breakdown: half-time, lots of air
+    if (s === 0) hitKick(c, t);
+    if (s === 8) hitSnare(c, t, 0.2);
+    if (s % 4 === 0) hitHat(c, t, false, 0.045);
   }
 
-  // Sub bass.
-  const subGain = c.createGain();
-  subGain.gain.value = 0.0001;
-  const sub = c.createOscillator();
-  sub.type = "sine";
-  sub.connect(subGain); subGain.connect(master);
-  sub.start();
+  /* bass */
+  if (section === "break") {
+    if (s === 0) playBassNote(c, t, chord.root - 12, STEP * 14);
+  } else if (section === "verse") {
+    // sparser, syncopated with the kick
+    if (s === 0 || s === 4 || s === 7 || s === 10 || s === 12) {
+      playBassNote(c, t, chord.root - 12, STEP * 1.8);
+    }
+  } else {
+    // build + chorus: pumping 8ths with octave jumps
+    if (s % 2 === 0) {
+      const oct = s === 6 || s === 14 ? 12 : 0;
+      playBassNote(c, t, chord.root - 12 + oct, STEP * 1.8);
+    }
+  }
 
-  return { master, filter, voices, sub, subGain, lfo, chordIdx: 0, nextAt: c.currentTime + 0.1 };
+  /* harmony */
+  if (section === "chorus" && (s === 0 || s === 10)) playStab(c, t, chord);
+  if (section === "break" && s === 0) playPad(c, t, chord, STEP * 16);
+
+  /* lead */
+  if (section === "build") {
+    // rising arpeggio cranks the tension
+    if (s % 2 === 0) {
+      const i = s / 2;
+      const tone = chord.intervals[i % 3] + 12 * Math.floor(i / 3);
+      playLeadNote(c, t, chord.root + 24 + tone, 0.045 + i * 0.004, 0.12);
+    }
+  } else {
+    const mel =
+      section === "chorus" ? CHORUS_MEL :
+      section === "verse" ? VERSE_MEL :
+      BREAK_MEL;
+    for (const [st, midi, dur, vel] of mel[barIn % 4]) {
+      if (st === s) playLeadNote(c, t, midi, vel, dur * STEP);
+    }
+  }
 }
 
 function scheduleBgm() {
-  if (!bgmNodes) return;
+  if (!bgmNodes || !bgmOn || muted) return;
   const c = ac();
-  // Look ahead one second; schedule the next chord when due.
-  while (bgmNodes.nextAt < c.currentTime + 1) {
-    const t = bgmNodes.nextAt;
-    const chord = CHORDS[bgmNodes.chordIdx % CHORDS.length];
-    bgmNodes.voices.forEach((voice, i) => {
-      const hz = midiHz(chord[i]);
-      voice.o1.frequency.setTargetAtTime(hz, t, 0.35);
-      voice.o2.frequency.setTargetAtTime(hz, t, 0.35);
-      voice.g.gain.setTargetAtTime(0.05 + (i === 0 ? 0.02 : 0), t, 1.1);
-    });
-    bgmNodes.sub.frequency.setTargetAtTime(midiHz(chord[0] - 12), t, 0.4);
-    bgmNodes.subGain.gain.setTargetAtTime(0.12, t, 1.4);
-    bgmNodes.chordIdx++;
-    bgmNodes.nextAt += CHORD_DUR;
+  if (bgmNextAt < c.currentTime) {
+    // Resync after a pause/mute so we don't burst-schedule missed steps.
+    bgmNextAt = c.currentTime + 0.05;
+  }
+  while (bgmNextAt < c.currentTime + 0.3) {
+    scheduleStep(c, bgmStep, bgmNextAt);
+    bgmStep++;
+    bgmNextAt += STEP;
   }
 }
 
@@ -245,11 +484,8 @@ export function setBgm(value) {
   if (value && !bgmNodes) {
     try {
       bgmNodes = buildBgm();
-      scheduleBgm();
-      setInterval(scheduleBgm, 500);
+      setInterval(scheduleBgm, 90);
     } catch { bgmNodes = null; return; }
   }
-  // When turning off we keep nodes alive (cheap) and just duck the master
-  // gain, so re-enabling is instant and seamless.
   applyBgmGain();
 }

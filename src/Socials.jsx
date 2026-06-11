@@ -271,6 +271,14 @@ export default function Socials() {
         }
         .sc-bar-outer.active .sc-label { color: #111111; }
 
+        /* mid-size viewports: the portrait eats into the centered label,
+           so shrink it and push the label clear of it */
+        @media (min-width: 981px) and (max-width: 1380px) {
+          .sc-char { left: 90px; max-width: 118px; }
+          .sc-main { padding-left: 120px; }
+          .sc-label { font-size: 24px; letter-spacing: 3px; }
+        }
+
         /* lb/rb nav row */
         @keyframes sc-arrow-left {
           0%, 100% { transform: translateX(0); opacity: 1; }
@@ -589,9 +597,10 @@ export default function Socials() {
           .sc-bar-outer.active .sc-bar,
           .sc-bar-outer.active .sc-bar-red { height: 76px; }
           .sc-role { font-size: 30px; padding: 0 8px 0 4px; }
-          .sc-label { font-size: 20px; letter-spacing: 2px; }
-          .sc-char { left: 64px; max-width: 100px; }
-          .sc-main { padding-left: 0; }
+          .sc-label { font-size: 18px; letter-spacing: 2px; }
+          .sc-char { left: 52px; max-width: 80px; }
+          /* keep the centered label clear of the portrait */
+          .sc-main { padding-left: 108px; padding-right: 6px; }
           .sc-stats { padding-right: 8px; }
           .sc-stat-num { font-size: 18px; }
           .sc-bar-outer.active .sc-bar-fill {

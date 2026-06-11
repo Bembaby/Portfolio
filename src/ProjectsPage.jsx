@@ -144,7 +144,7 @@ export default function ProjectsPage() {
           min-height: 70vh;
           z-index: 12;
           padding: 24px;
-          background: linear-gradient(180deg, rgba(6, 44, 28, 0.96) 0%, rgba(3, 24, 15, 0.97) 100%);
+          background: linear-gradient(180deg, #062c1c 0%, #03180f 100%);
           clip-path: polygon(0 0, 100% 0, calc(100% - 18px) 100%, 0 100%);
           box-shadow:
             inset 0 0 0 1px rgba(127, 245, 189, 0.18),
@@ -210,7 +210,7 @@ export default function ProjectsPage() {
           font-size: 19px;
           letter-spacing: 2px;
           color: #bfffe0;
-          background: rgba(11, 64, 40, 0.95);
+          background: #0b4028;
           box-shadow: inset 0 0 0 1px rgba(127, 245, 189, 0.25);
           padding: 6px 14px 4px;
           clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
@@ -229,7 +229,7 @@ export default function ProjectsPage() {
           letter-spacing: 0.4px;
           color: #ecfff5;
           padding: 12px 16px;
-          background: rgba(4, 34, 21, 0.96);
+          background: #042215;
           clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
           box-shadow: inset 0 0 0 1px rgba(127, 245, 189, 0.12);
         }

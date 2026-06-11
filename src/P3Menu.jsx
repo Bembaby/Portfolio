@@ -105,7 +105,7 @@ export default function P3Menu({ onNavigate }) {
           pointer-events: all;
         }
         @media (max-width: 760px) {
-          .p3-menu { padding: 24px 12px; }
+          .p3-menu { padding: 24px 12px; gap: 16px; }
         }
 
         .p3-row {
@@ -305,13 +305,12 @@ export default function P3Menu({ onNavigate }) {
           clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
           animation: p3-ticker-in 3.4s ease both;
           pointer-events: none;
-          white-space: nowrap;
-          max-width: 76vw;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          text-align: right;
+          line-height: 1.4;
+          max-width: min(76vw, 560px);
         }
         @media (max-width: 760px) {
-          .p3-ticker { font-size: 12px; letter-spacing: 2px; right: 12px; top: 14px; max-width: 64vw; }
+          .p3-ticker { font-size: 12px; letter-spacing: 2px; right: 12px; top: 14px; max-width: 70vw; }
         }
       `}</style>
 

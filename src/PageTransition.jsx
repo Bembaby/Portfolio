@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { motion as Motion, AnimatePresence } from "framer-motion";
-import { useLocation } from "react-router-dom";
+import { motion as Motion } from "framer-motion";
 
 const defaultBlocks = ["#0d1a3a", "#1a6aff", "#7dd4fc"];
 
@@ -215,8 +214,9 @@ function ResumeTransition() {
   ));
 }
 
-// Mounts fresh on every navigation (keyed by pathname), shows the overlay,
-// then unmounts it once the longest variant (~0.8s incl. stagger) has run.
+// Shows the overlay on mount, then unmounts it once the longest
+// variant (~0.8s incl. stagger) has run. PageTransition itself is
+// remounted per-route by the keyed <Routes> above, so no keying needed.
 function OverlayGate({ variant }) {
   const [done, setDone] = useState(false);
 
@@ -229,22 +229,25 @@ function OverlayGate({ variant }) {
   return <TransitionOverlay variant={variant} />;
 }
 
+// Full-screen, opaque wrapper. The opaque background is what prevents
+// the previous screen from bleeding through while routes swap, and the
+// single top-level AnimatePresence in App.jsx handles enter/exit.
 export default function PageTransition({ children, variant = "default" }) {
-  const location = useLocation();
-
   return (
-    <AnimatePresence mode="wait">
-      <Motion.div key={location.pathname} style={{ position: "relative" }}>
-        <OverlayGate key={location.pathname} variant={variant} />
-        <Motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2, delay: 0.18 }}
-        >
-          {children}
-        </Motion.div>
-      </Motion.div>
-    </AnimatePresence>
+    <Motion.div
+      style={{
+        position: "fixed",
+        inset: 0,
+        overflow: "hidden",
+        background: "#02030a",
+      }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.16 }}
+    >
+      <OverlayGate variant={variant} />
+      {children}
+    </Motion.div>
   );
 }

@@ -33,7 +33,7 @@ export default function NotFound() {
           gap: 14px;
           text-align: center;
           padding: 0 16px;
-          background: rgba(2, 16, 8, 0.45);
+          background: #021008;
         }
         @keyframes nf-glitch {
           0%, 100% { transform: rotate(-5deg) translate(0, 0); text-shadow: 8px 8px 0 #0a5436, -4px -4px 0 rgba(95, 232, 168, 0.5); }

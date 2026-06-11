@@ -216,12 +216,27 @@ export default function AboutMe() {
           onClick={() => { playBack(); setRevealed(false); }}
         />
       )}
-      {revealed && (
+      {revealed && ITEMS[active].id === "stats" ? (
+        <div key={`stats-${active}`} className={`sc-stats-row${mounted ? " mounted" : ""}`}>
+          <div className="sc-reveal-panel stats">
+            <div className="sc-reveal-upper-bar stats">
+              {REVEAL_CONTENT[active].upper.map((line) => (
+                <div className="sc-reveal-upper-line" key={line}>{line}</div>
+              ))}
+            </div>
+            <div className="sc-reveal-lower-bar">{REVEAL_CONTENT[active].lower}</div>
+          </div>
+          <div className="sc-radar-shell">
+            <div className="sc-radar-title">ATTRIBUTES</div>
+            <RadarChart />
+          </div>
+        </div>
+      ) : revealed && (
         <div
           key={`panel-${active}`}
-          className={`sc-reveal-panel${mounted ? " mounted" : ""}${ITEMS[active].id === "stats" ? " stats" : ""}`}
+          className={`sc-reveal-panel${mounted ? " mounted" : ""}`}
         >
-          <div className={`sc-reveal-upper-bar${ITEMS[active].id === "stats" ? " stats" : ""}`}>
+          <div className="sc-reveal-upper-bar">
             {REVEAL_CONTENT[active].upper.map((line) => (
               <div className="sc-reveal-upper-line" key={line}>{line}</div>
             ))}
@@ -229,7 +244,7 @@ export default function AboutMe() {
           <div className="sc-reveal-lower-bar">{REVEAL_CONTENT[active].lower}</div>
         </div>
       )}
-      {revealed && (
+      {revealed && ITEMS[active].id !== "stats" && (
         <div key={`nav-${active}`} className="sc-right-nav">
           <span className="sc-nav-arrow left">◄</span>
           <span className="sc-nav-btn">LB</span>
@@ -245,12 +260,6 @@ export default function AboutMe() {
             src={MAIN_IMAGES[active]}
             alt=""
           />
-        </div>
-      )}
-      {revealed && ITEMS[active].id === "stats" && (
-        <div key={`radar-${active}`} className="sc-radar-shell">
-          <div className="sc-radar-title">ATTRIBUTES</div>
-          <RadarChart />
         </div>
       )}
       <style>{`
@@ -273,9 +282,17 @@ export default function AboutMe() {
           position: absolute;
           inset: 0;
           z-index: 12;
-          background: rgba(40, 45, 54, 0.68);
+          background: rgba(10, 12, 20, 0.88);
           pointer-events: none;
           animation: sc-dim-in 0.32s ease-out;
+        }
+
+        /* while a reveal is open the menu disappears entirely —
+           no ghost rows behind the panels */
+        .sc-root.concealed {
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.2s ease;
         }
 
         @keyframes sc-dim-in {
@@ -290,15 +307,15 @@ export default function AboutMe() {
         @keyframes sc-reveal-bar-in {
           0% {
             opacity: 0;
-            transform: translateX(-120px) rotate(-20deg) scaleX(0.72);
+            transform: translateX(-120px) rotate(var(--panel-rot, -20deg)) scaleX(0.72);
           }
           60% {
-            opacity: 0.96;
-            transform: translateX(18px) rotate(-20deg) scaleX(1.03);
+            opacity: 1;
+            transform: translateX(18px) rotate(var(--panel-rot, -20deg)) scaleX(1.03);
           }
           100% {
-            opacity: 0.92;
-            transform: translateX(0) rotate(-20deg) scaleX(1);
+            opacity: 1;
+            transform: translateX(0) rotate(var(--panel-rot, -20deg)) scaleX(1);
           }
         }
 
@@ -350,6 +367,7 @@ export default function AboutMe() {
         }
 
         .sc-reveal-panel {
+          --panel-rot: -20deg;
           position: absolute;
           top: 44vh;
           left: -6vw;
@@ -358,21 +376,79 @@ export default function AboutMe() {
           z-index: 12;
           pointer-events: none;
           background:
-            linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(243,246,252,0.98) 100%);
+            linear-gradient(180deg, #ffffff 0%, #f3f6fc 100%);
           clip-path: polygon(0 0, 100% 0, calc(100% - 88px) 100%, 0 100%);
           box-shadow:
             0 0 0 2px rgba(255,255,255,0.18),
             18px 0 0 rgba(215, 13, 44, 0.82),
             28px 0 0 rgba(255,255,255,0.26);
           opacity: 0;
-          transform: translateX(-40px) rotate(-20deg);
+          transform: translateX(-40px) rotate(var(--panel-rot));
           transform-origin: left bottom;
           transition: opacity 0.3s ease, transform 0.35s ease;
         }
         .sc-reveal-panel.mounted {
-          opacity: 0.92;
-          transform: translateX(0) rotate(-20deg);
+          opacity: 1;
+          transform: translateX(0) rotate(var(--panel-rot));
           animation: sc-reveal-bar-in 0.46s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        /* stats: slanted bar grows left out of a square attributes card (see sketch) */
+        @keyframes sc-stats-in {
+          0%   { opacity: 0; transform: translateX(-48px) scaleX(0.94); }
+          100% { opacity: 1; transform: translateX(0) scaleX(1); }
+        }
+        .sc-stats-row {
+          --card: clamp(300px, 38vw, 460px);
+          --bar-slant: 52px;
+          position: absolute;
+          left: 0;
+          right: 4vw;
+          bottom: 26vh;
+          height: var(--card);
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) var(--card);
+          gap: 0;
+          z-index: 13;
+          pointer-events: none;
+          opacity: 0;
+          transform: translateX(-48px);
+          transition: opacity 0.3s ease, transform 0.35s ease;
+        }
+        .sc-stats-row.mounted {
+          opacity: 1;
+          transform: translateX(0);
+          animation: sc-stats-in 0.46s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .sc-stats-row .sc-reveal-panel.stats {
+          position: relative;
+          top: 0;
+          left: 0;
+          right: auto;
+          bottom: auto;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          opacity: 1;
+          transform: none;
+          animation: none;
+          background: linear-gradient(180deg, #ffffff 0%, #f3f6fc 100%);
+          /* left edge slopes down — bar grows out of the card */
+          clip-path: polygon(var(--bar-slant) 0, 100% 0, 100% 100%, 0 100%);
+          box-shadow:
+            0 0 0 2px rgba(255,255,255,0.18),
+            18px 0 0 rgba(215, 13, 44, 0.82);
+        }
+        .sc-stats-row .sc-reveal-panel.stats::before {
+          clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+        }
+        /* fill the top-left wedge so the bar reads edge-to-edge */
+        .sc-stats-row .sc-reveal-panel.stats::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(180deg, #ffffff 0%, #f3f6fc 100%);
+          clip-path: polygon(0 0, var(--bar-slant) 0, 0 100%);
+          pointer-events: none;
         }
         .sc-reveal-panel::before {
           content: "";
@@ -390,7 +466,7 @@ export default function AboutMe() {
           left: 0%;
           width: 100%;
           height: 40%;
-          background: rgba(0, 0, 0, 0.92);
+          background: #07080d;
           clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 100%, 0 100%);
           box-shadow: 0 0 0 1px rgba(255,255,255,0.06);
           display: flex;
@@ -404,17 +480,20 @@ export default function AboutMe() {
         .sc-reveal-upper-line {
           font-family: 'Montserrat', sans-serif;
           font-weight: 300;
-          font-size: 20px;
+          font-size: clamp(14px, 1.1vw + 8px, 20px);
           letter-spacing: 0.5px;
-          line-height: 1.15;
+          line-height: 1.2;
+          /* heavier left padding compensates the leftward shove of the tilt */
+          padding: 0 5% 0 10%;
         }
         .sc-reveal-lower-bar {
           position: absolute;
           top: 58%;
           right: 0;
-          width: 48%;
-          height: 20%;
-          background: rgba(0, 0, 0, 0.92);
+          width: 52%;
+          min-height: 20%;
+          height: auto;
+          background: #07080d;
           clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 100%, 0 100%);
           box-shadow: 0 0 0 1px rgba(255,255,255,0.06);
           display: flex;
@@ -423,10 +502,23 @@ export default function AboutMe() {
           color: #fff;
           font-family: 'Montserrat', sans-serif;
           font-weight: 300;
-          font-size: 22px;
+          font-size: clamp(15px, 0.9vw + 8px, 22px);
           letter-spacing: 0.4px;
+          line-height: 1.3;
           text-transform: lowercase;
-          padding-left: 22px;
+          padding: 10px 32px 10px 22px;
+        }
+        .sc-stats-row .sc-reveal-upper-bar.stats {
+          top: 10%;
+          height: 52%;
+          width: 100%;
+          padding: 0 4vw 0 calc(var(--bar-slant) + 12px);
+        }
+        .sc-stats-row .sc-reveal-lower-bar {
+          top: 68%;
+          right: 0;
+          width: 100%;
+          padding-left: calc(var(--bar-slant) + 12px);
         }
 
         @keyframes sc-right-nav-pop {
@@ -493,39 +585,51 @@ export default function AboutMe() {
           60%  { opacity: 1; transform: var(--radar-base, rotate(4deg)) translateX(-8px) scale(1.01); }
           100% { opacity: 1; transform: var(--radar-base, rotate(4deg)) translateX(0) scale(1); }
         }
-        .sc-radar-shell {
-          --radar-base: rotate(4deg);
-          position: absolute;
-          top: 7vh;
-          right: 5vw;
-          z-index: 13;
-          width: min(40vw, 470px);
+        .sc-stats-row .sc-radar-shell {
+          --radar-base: rotate(0deg);
+          width: 100%;
+          height: 100%;
+          position: relative;
+          top: 0;
+          left: 0;
+          right: auto;
           padding: 18px 18px 10px;
-          background: rgba(4, 7, 26, 0.94);
+          display: flex;
+          flex-direction: column;
+          box-sizing: border-box;
+          background: #04071a;
           clip-path: polygon(0 0, 100% 0, calc(100% - 20px) 100%, 0 100%);
           box-shadow:
             inset 0 0 0 1px rgba(125, 212, 252, 0.25),
             14px 14px 0 rgba(196, 0, 26, 0.85);
-          animation: sc-radar-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+          animation: sc-radar-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
           pointer-events: none;
         }
-        /* keep the radar clear of the text bars */
         .sc-reveal-upper-bar.stats {
-          padding-right: 40vw;
+          gap: 8px;
+        }
+        .sc-stats-row .sc-reveal-upper-line {
+          padding: 0;
         }
         .sc-radar-title {
           font-family: 'Anton', sans-serif;
-          font-size: 26px;
+          font-size: 28px;
           letter-spacing: 3px;
           color: #ffffff;
           border-left: 4px solid #ff5e88;
           padding-left: 10px;
           margin-bottom: 4px;
+          flex-shrink: 0;
         }
         .sc-radar-canvas {
           width: 100%;
           aspect-ratio: 1;
           display: block;
+        }
+        .sc-stats-row .sc-radar-canvas {
+          flex: 1;
+          min-height: 0;
+          aspect-ratio: auto;
         }
 
         /* ── Each bar ── */
@@ -789,35 +893,67 @@ export default function AboutMe() {
           .sc-bar-outer.active .sc-bar-fill {
             clip-path: polygon(30% 0, 100% 0, calc(100% - 14px) 100%, calc(30% + 80px) 100%);
           }
+          /* portrait becomes backdrop art on phones: above the dim but
+             UNDER the text panel so copy is never covered */
           .sc-main-portrait-shell {
-            width: 74vw;
-            right: -8vw;
-            opacity: 0.5 !important;
+            width: 80vw;
+            right: -10vw;
+            z-index: 12;
+            opacity: 0.85 !important;
           }
+          .sc-stats-row {
+            --card: min(78vw, 340px);
+            --bar-slant: 28px;
+            left: 0;
+            right: 0;
+            bottom: 20vh;
+            height: auto;
+            grid-template-columns: 1fr;
+            grid-template-rows: var(--card) auto;
+          }
+          .sc-stats-row .sc-radar-shell {
+            grid-row: 1;
+            width: var(--card);
+            height: var(--card);
+            margin: 0 auto;
+          }
+          .sc-stats-row .sc-reveal-panel.stats {
+            grid-row: 2;
+            min-height: 34vh;
+            clip-path: polygon(0 6%, 100% 0, 100% 100%, 0 100%);
+          }
+          .sc-stats-row.mounted { transform: none; }
           .sc-reveal-panel {
-            top: 40vh;
-            height: 56vh;
-            width: 96vw;
-            left: -8vw;
+            --panel-rot: 0deg;
+            top: 44vh;
+            height: 50vh;
+            width: 100vw;
+            left: 0;
+            z-index: 13;
+            transform-origin: left top;
+            clip-path: polygon(0 6%, 100% 0, 100% 100%, 0 100%);
           }
-          .sc-reveal-upper-line { font-size: 13px; padding: 0 8vw; }
-          .sc-reveal-lower-bar { font-size: 14px; width: 62%; padding-left: 14px; }
-          /* gamepad hints are meaningless on touch and collide with the radar */
+          .sc-reveal-upper-line { font-size: 13.5px; padding: 0 5vw; }
+          .sc-reveal-upper-bar, .sc-reveal-upper-bar.stats {
+            top: 12%;
+            height: 52%;
+            padding: 0;
+            gap: 8px;
+          }
+          .sc-reveal-lower-bar,
+          .sc-stats-row .sc-reveal-lower-bar {
+            top: 70%;
+            right: 6vw;
+            width: 70%;
+            font-size: 14px;
+            padding: 8px 16px;
+          }
           .sc-right-nav { display: none; }
-          .sc-radar-shell {
-            --radar-base: translateX(50%) rotate(0deg);
-            top: 9vh;
-            right: 50%;
-            width: min(62vw, 290px);
-            padding: 12px 12px 6px;
-          }
-          .sc-radar-title { font-size: 18px; }
-          .sc-reveal-panel.stats { top: 49vh; height: 48vh; }
-          .sc-reveal-upper-bar.stats { padding-right: 0; }
+          .sc-radar-title { font-size: 20px; }
         }
       `}</style>
 
-      <div className="sc-root" role="navigation">
+      <div className={`sc-root${revealed ? " concealed" : ""}`} role="navigation">
         {ITEMS.map((item, i) => (
           <div
             key={item.id}

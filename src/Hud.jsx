@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { getDayPhase, getDateStamp } from "./dayPhase";
 import { getMuted, setMuted, getBgm, setBgm, playBack, playHover, playRankUp } from "./sfx";
 import { isDarkHour, toggleDarkHour, onDarkHourChange } from "./darkHour";
+import { setSiteMode } from "./siteMode";
 
 // Persistent P3-style HUD: date/time widget, sfx + bgm toggles, back button
 // on sub-pages. Clicking the phase chip flips the hidden "Dark Hour" theme.
@@ -44,6 +45,12 @@ export default function Hud() {
     const on = toggleDarkHour();
     if (on) playRankUp();
     else playBack();
+  };
+
+  const goPro = () => {
+    // Battle music has no place in a boardroom.
+    setBgm(false);
+    setSiteMode("pro");
   };
 
   return (
@@ -156,8 +163,15 @@ export default function Hud() {
           border-color: #7dd4fc;
           box-shadow: inset 0 0 10px rgba(125, 212, 252, 0.35);
         }
+        .hud-btn-pro {
+          width: auto;
+          padding: 0 10px;
+          color: #ffd76a;
+          border-color: rgba(255, 215, 106, 0.45);
+        }
         @media (max-width: 760px) {
           .hud-btn { width: 34px; font-size: 13px; }
+          .hud-btn-pro { width: auto; padding: 0 8px; }
         }
 
         .hud-back {
@@ -223,6 +237,14 @@ export default function Hud() {
           title={bgm ? "BGM off" : "BGM on"}
         >
           BGM
+        </button>
+        <button
+          className="hud-btn hud-btn-pro"
+          onClick={goPro}
+          aria-label="Switch to professional version"
+          title="Professional version"
+        >
+          PRO
         </button>
       </div>
 
